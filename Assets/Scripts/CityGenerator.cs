@@ -6,7 +6,7 @@ using UnityEngine.Networking;
 
 public class CityGenerator : MonoBehaviour
 {
-    public Vector2 townBounds = new Vector2(0, 1000);
+    public float townBounds = 1000;
     public string json = "";
     public GameObject townPrefab;
     public GameObject roadPrefab;
@@ -74,28 +74,49 @@ public class CityGenerator : MonoBehaviour
 
     private void GenerateTownObjects()
     {
+        float maxX = 0;
+        float maxY = 0;
+
         for (int i = 0; i < data.towns.Count; i++)
         {
-            Vector3 position = new Vector3(data.towns[i].x, data.towns[i].y);
+            if(data.towns[i].x > maxX)
+                maxX = data.towns[i].x;
+            if(data.towns[i].y > maxY)
+                maxY = data.towns[i].y;
+        }
+        
+        float gapX = townBounds / maxX;
+        float gapY = townBounds / maxY;
+        
+        for (int i = 0; i < data.towns.Count; i++)
+        {
+            Vector3 position = new Vector3(data.towns[i].x * gapX, data.towns[i].y * gapY);
             
             GameObject town = Instantiate(townPrefab, position, Quaternion.identity, townParent.transform);
             town.name = data.towns[i].name;
+            town.GetComponent<CityHover>().InitData(data.towns[i].name,data.towns[i].inhabitants ,data.towns[i].id);
             
-            float newScale = data.towns[i].inhabitants / 1000f;
+            float newScale = data.towns[i].inhabitants / 500f;
             town.transform.localScale = new Vector3(newScale, newScale, newScale);
             towns.Add(town);
         }
 
-        MakeCameraSeeAllTowns();
+        GenerateRoads();
     }
-    
-    private void MakeCameraSeeAllTowns()
+
+    private void GenerateRoads()
     {
-        Bounds bounds = new Bounds(towns[0].transform.position, Vector3.zero);
-        foreach (GameObject town in towns)
+        for (int i = 0; i < data.roads.Count; i++)
         {
-            bounds.Encapsulate(town.transform.position);
+            GameObject start = towns[data.roads[i].start-1];
+            GameObject end = towns[data.roads[i].end-1];
+            
+            GameObject road = Instantiate(roadPrefab, start.transform.position, Quaternion.identity, roadParent.transform);
+            road.name = start.name + " - " + end.name;
+            road.GetComponent<LineRenderer>().positionCount = 2;
+            road.GetComponent<LineRenderer>().SetPosition(0, start.transform.position);
+            road.GetComponent<LineRenderer>().SetPosition(1, end.transform.position);
+            roads.Add(road);
         }
-        Camera.main.transform.position = new Vector3(bounds.center.x, bounds.center.y, Camera.main.transform.position.z);
     }
 }
